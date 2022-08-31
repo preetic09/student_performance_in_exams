@@ -1,0 +1,404 @@
+---
+title: "Students' Performance in Exams"
+author: "Preeti Choubey"
+date: "2/17/2022"
+bibliography: references.bib
+nocite: '@*'
+output:
+  html_document:
+    fig_width: 8
+    code_folding: hide
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=4,echo=FALSE,warning=FALSE, message=FALSE)
+```
+![](students.jpg)
+
+# Overview
+
+This data set consists of the grades students earned in various subjects. The purpose of this project is to understand whether the students' race and gender and their parent's own education had any correlation with their grades.Will try to look at each variable and also their relationships with creating a detailed statistical analysis of the data through both R script and graphs
+
+
+## Goal of Analysis
+
+- Does one particular race over smarts others?
+- What exam is the best performed?
+- Is there a relationship between the reading and writing scores?
+- Does practice help to excel scores?
+- Does students good at math bad at writing
+-  Does the lunch influence the test score?
+- Which gender performs better in Math?
+- What is the impact of a parent’s level of education on his/her child’s  avg scores?
+
+# Importing and processing the data 
+## Loading the packages
+
+```{r}
+library(plotly)
+library(sampling)
+library(tidyverse)
+library(dplyr)
+options(scipen=7)
+
+```
+Successfully load the plotly, sampling, tidyverse and dplyr packages.
+
+## Importing the data and getting a glimpse of it
+
+I download this data set from kaggel and then set working directory.
+There are 1000 observations and 8 variables.
+Among 8 variable, 5 are categorical variables and 3 are numerical.
+```{r}
+setwd("~/CS544Final_Choubey")
+Students <- read.csv("StudentsPerformance.csv")
+glimpse(Students)
+
+```
+
+
+## Summary of the data
+
+```{r}
+Students %>% summary
+
+```
+
+## Checking for missing values
+```{r}
+
+cat("There are", sum(is.na(Students)), "missing value")
+
+```
+
+No missing value in our Data set.
+
+## Renaming the columns
+```{r}
+colnames(Students) <- c("Gender","Race","Parent_Educ_level","Lunch","Test_Pre", "MathScore", "ReadingScore", "WritingScore")
+```
+I changed the column names to title case, making them more readable.
+
+## Adding a new Grade columnn
+```{r}
+Grade <- function(score){
+  if(score >= 90 & score <= 100){
+    return("A")
+  } else {
+    if(score >= 85 & score <= 89){
+      return("A-")
+    } else{
+      if(score >= 80 & score <=84){
+        return("B")
+      }else{
+        if(score >=70 & score <= 74){
+          return("B-")
+        } else{
+          if(score >= 65 & score <= 69){
+            return("C")
+          } else{
+            if(score >= 50 & score <= 64){
+              return("D")
+            } else{
+              return("F")
+            }}}} }} }
+
+
+Students$Math.Grade <- sapply(Students$MathScore, FUN=Grade) 
+Students$Reading.Grade <- sapply(Students$ReadingScore, FUN =Grade)
+Students$Writing.Grade <- sapply(Students$WritingScore, FUN=Grade)
+
+```
+This is a categorical column where the values are letter grades (A, B, C, and so forth).
+
+## Factorizing categorical values
+```{r}
+Students$Gender <- as.factor(Students$Gender)
+Students$Race <- as.factor(Students$Race)
+Students$Parent_Educ_level<- as.factor(Students$Parent_Educ_level)
+Students$Lunch <- as.factor(Students$Lunch)
+Students$Test_Pre  <- as.factor(Students$Test_Pre )
+Students$Math.Grade <- as.factor(Students$Math.Grade)
+Students$Reading.Grade <- as.factor(Students$Reading.Grade)
+Students$Writing.Grade <- as.factor(Students$Writing.Grade)
+
+```
+There are lots of categorical variables, so I factorized them to make them easier to work with. The variables in question were:
+
+- `Gender`
+- `Race`
+- `Parent_Educ_level`
+- `Lunch`
+- `Test_Pre`
+- `Math.Grade`
+- `Reading.Grade`
+- `Writing.Grade`
+
+# Analyzing the data
+
+## Counting males and females
+
+```{r}
+table(Students$Gender)
+par(mfrow=c(1,2))
+s<- barplot(table(Students$Gender), col = c("pink","blue"), xlab = "Gender", ylim = c(0,600),
+        main =" Males & Females", ylab = "Frequencies")
+text(x=s, y=table(Students$Gender), labels = table(Students$Gender), pos = 3)
+data <- table(Students$Gender)
+slice.labels <- names(data)
+slice.percents <- round((data/sum(data))*100, digits = 2)
+slice.labels <- paste(slice.labels, slice.percents)
+slice.labels <- paste(slice.labels, "%", sep="")
+pie(data, labels = slice.labels, col = c("pink","blue"),main = "proportion of Gender")
+
+par(mfrow=c(1,1))
+
+```
+
+
+From the analysis above, A larger number(51.8%) of the student population are females.
+
+## Distribution of ethnicities
+```{r}
+table(Students$Race)
+par(mfrow=c(1,2))
+data <- table(Students$Race)
+slice.labels <- names(data)
+slice.percents <- round((data/sum(data))*100, digits = 2)
+slice.labels <- paste(slice.labels, slice.percents)
+slice.labels <- paste(slice.labels, "%", sep="")
+pie(data, labels = slice.labels, col = rainbow(5), main = "Pie chart for Student Race")
+s<- barplot(table(Students$Race), col=rainbow(5), ylim=c(0,400) ,las=2)
+text(x=s, y=table(Students$Race), labels = table(Students$Race), pos=3)
+par(mfrow=c(1,1))
+
+```
+
+
+Most students belong to group C, followed by groups D, B and E; group A has the least students.we see that 31.9% of the students belong to  Group C.
+
+
+## What exam is the best performed?
+
+```{r}
+ data <- data.frame(
+    MathScore=Students$MathScore,
+    ReadingScore=Students$ReadingScore,
+    WritingScore=Students$WritingScore
+  )
+  summary(data)
+
+plot_ly(data, y=~MathScore, type = "box", name = "MathScore")%>%
+  add_trace(y=~ReadingScore, name="ReadingScore")%>%
+  add_trace(y=~WritingScore, name="WritingScore")%>%
+  layout(yaxis = list(title="Scores"))
+```
+The best performed exam was reading. Math came after with writing yielding the least performance.Each score distribution overall looks the same, except there more outliers in math test.
+
+## Is there a relationship between the reading and writing scores?
+```{r}
+Students %>% plot_ly(x=~WritingScore, y=~ReadingScore, type = "scatter", mode="markers")%>%
+  add_markers(color=~ReadingScore)
+```
+ Yes, Reading and Writing have a strong positive correlation.
+
+## Correlation between Math, Reading, and Writing score
+```{r}
+pairs(Students[6:8], pch=14,  col="blue")
+```
+ 
+ There are positive correlation between each test score.
+ Reading & Writing score have a strong positive correlation
+
+## Is there a relationship between race and math Grade?
+```{r}
+table(Students$Math.Grade, Students$Race)
+plot_ly(Students, x=~Math.Grade, y=~Race, type = "histogram2d")
+plot_ly(Students, x=~Math.Grade, color = ~Race, colors = "Accent", type = "histogram")
+
+
+```
+From the above graph, group E has most A and least D grade
+
+## Does practice really make perfect?
+
+```{r}
+x <- table(Students$Test_Pre, Students$Math.Grade)
+x
+mosaicplot(x, color = c("blue", "orange", "pink", "green", "cyan", "red","yellow"), main="")
+
+```
+
+Ans: Yes,Test prep course has some impact.
+
+## Distribution of total scores
+
+```{r}
+scores <- Students%>% mutate(TotalScores = MathScore + ReadingScore + WritingScore)
+hist(scores$TotalScores, prob = TRUE,breaks = 40, xlab = "Total Scores", main = "", col="cyan",ylim = c(0,0.015),
+     xlim=c(0,350))                                
+lines(density(scores$TotalScores), col = "blue")
+
+```
+
+Distribution of students' Total scores is negatively(left) skewed.
+
+```{r}
+plot(density(scores$MathScore), main="Density Plot", xlab="")                                # Modify main title & labels
+polygon(density(scores$MathScore), col="blue") 
+
+lines(density(scores$ReadingScore), col = "red") 
+polygon(density(scores$ReadingScore), col="red") 
+
+lines(density(scores$WritingScore), col = "pink") 
+polygon(density(scores$WritingScore), col="pink")
+legend("topleft",  horiz = F,                                # Add legend to density
+       legend = c("Density MathScores ", "Density ReadingScores", "Density WritingScores"),
+       col = c("blue", "red", "pink"),
+       lty = 1)
+
+```
+
+- Math Score,  reading Score, writing Score are left skewed.
+
+
+
+## Central Limit Theorem 
+A normal distribution of samples even if the original population is not normally distributed.
+```{r}
+hist(Students$MathScore, breaks = seq(0,100,10),ylim=c(0,300), xlab = "Math Score", main = "", col="cyan", xaxt="n")
+axis(side=1, at=seq(0,100,10))
+mean(Students$MathScore)
+sd(Students$MathScore)
+par(mfrow=c(2,3))
+samples <- 5000
+xbar <- numeric(samples)
+set.seed(4608)
+for(size in c(10,20,30,40,50,60)){
+  for(i in 1:samples){
+    xbar[i] <- mean(sample(Students$MathScore, size, replace=FALSE))
+  }
+  hist(xbar, breaks = 15, prob=TRUE, col="blue", main = paste("Sample size= ", size))
+  cat("Sample size= ", size, "mean= ", mean(xbar), "SD= ", sd(xbar), "\n")
+}
+
+par(mfrow=c(1,1))
+
+```
+
+As sample size goes up, the mean of sample means gets closer to the population mean and the sd of samples decreases.
+we can see that the distribution of randomly picked sample mean follow 
+a normal distribution and the more the sample size was, the better it fit a normal distribution.
+
+
+## Various sampling methods 
+- Simple random sampling without replacement (SRSWOR)
+- systematic sampling
+- stratified Sample
+
+```{r}
+par(mfrow=c(2,2), mar=c(3.2, 2,2,3.2))
+barplot(table(Students$Math.Grade),
+        main="Population", xlab = "Math Grade",  col="cyan")
+#(SRSWOR)
+set.seed(4608)
+s <- srswor(100, nrow(Students))
+sample.1 <- Students[s !=0,]
+barplot(table(sample.1$Math.Grade), col="orange", main="Simple sampling", xla="Math Grade", ylim=c(0,40))
+## systematic sampling
+set.seed(4608)
+N <- nrow(Students)
+n <- 100
+k <- ceiling(N/n)
+set.seed(4608)
+r <- sample(k,1)
+s <-seq(r, by=k, length=n)
+sample.2 <- Students[s,]
+barplot(table(sample.2$Math.Grade), col="blue", main="Systematic Sampling", xlab="Math Grade", ylim=c(0,40))
+### stratified Sample
+order.index <- order(Students$Race)
+data <- Students[order.index,]
+freq <- table(data$Race)
+st_size <-round(100*freq/sum(freq))
+set.seed(4608)
+st.3 <- strata(data, stratanames = c("Race"), size=st_size, method = "srswor")
+sample.3 <- getdata(data,st.3)
+barplot(table(sample.3$Math.Grade), col="green", main="Stratified Sample", xlab="Math Grade", ylim = c(0,40))
+
+par(mfrow=c(1,1))
+popmean <- mean(Students$MathScore)
+sim_samp_mean <- mean(sample.1$MathScore)
+sys_samp_mean <- mean(sample.2$MathScore)
+stra_samp_mean <- mean(sample.3$MathScore)
+popmean
+sim_samp_mean
+sys_samp_mean
+stra_samp_mean
+```
+
+
+Comparing the three samples with the distribution of the population reveals that the distribution for each sample follows the distribution of the population. This reinforces that sampling is a good method for exploring the data within data sets,even if the population is not available.
+
+## Does the lunch influence the test score?
+```{r}
+Students_new <-  Students %>% mutate( AvgScore =round(rowMeans(Students[,6:8])))
+plot_ly(Students_new, x=~Lunch, y=~AvgScore, type = "violin",color =~Lunch)
+```
+Answer: Students with a standard lunch score significantly higher.
+
+## Does parents level of education  influence the test score?
+```{r}
+plot_ly(Students_new, x=~Parent_Educ_level, y=~AvgScore, type = "box", color =~Parent_Educ_level)
+```
+Ans: No, the level of parents education has no major impact on students Average Scores.
+
+## Gender performance in each subject are
+```{r}
+p <- subplot(
+plot_ly(Students, x=~Gender, y=~MathScore, type = "box", name = "MathScore"),
+plot_ly(Students, x=~Gender, y=~ReadingScore, type = "box", name = "ReadingScore"),
+plot_ly(Students, x=~Gender, y=~WritingScore, type = "box", name = "WritingScore"),
+
+nrows  =1,
+shareY=TRUE
+
+)
+p <- layout(p, yaxis = list(title="Scores"))
+p
+```
+
+The box plots above indicates that males perform better in math while in reading and writing, females are the better performers.
+
+## Does a particular  Gender excel at math??
+```{r}
+table(Students$Math.Grade, Students$Gender)
+ggplot(Students, aes(x = Math.Grade, fill = Gender)) +
+  geom_bar(position = "stack") + ggtitle("Gender & MathGrade") +
+  ylab("Gender") + xlab("Math Grade")
+male_maths <- filter(Students, Gender=="male")
+mean(male_maths$MathScore)
+female_math <- filter(Students, Gender=="female")
+mean(female_math$MathScore)
+t.test(male_maths$MathScore, female_math$MathScore, alternative = "two.sided",
+       conf.level = 0.95)
+
+```
+Ans: Yes, Males perform in Math better than females.
+
+ p -value of 0.0000008 signifies that we can reject the null hypothesis that male and female have the same Math labels,since 0.00000008 < 0.05
+Males perform in Math better than females.
+
+# Conclusion
+- Group E has most A and least D grade.
+- The best performed exam was reading. Math came after with writing       yielding the least performance.
+- Yes, Reading and Writing have a strong positive correlation.
+- Test prep course has some impact.
+- Students with a standard lunch score significantly higher.
+- Males perform better in math while in reading and writing, females are   the better performers.
+- The level of parents education has no major impact on students Average   Scores.
+
+# References
