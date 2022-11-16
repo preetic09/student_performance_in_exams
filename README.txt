@@ -1,0 +1,1 @@
+The purpose of this project is to understand whether the students' race and gender and their parent's education had any correlation with their grades. I looked at each variable and its relationships by creating a detailed statistical analysis of the data through both R scripts and graphs.
